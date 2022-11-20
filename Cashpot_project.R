@@ -3,14 +3,16 @@ library(ggplot2)
 library(dplyr)
 
 
-## Loads NLCB worksheet and selects the needed columns
+## Loads NLCB worksheet and selects the needed columns. The draw_year variable is also converted into a discrete variable. 
 nlcb <- read_csv("nlcb_cashpot.csv") %>%
-  transmute(draw_year,draw_num,jackpot, num_of_wins, 
+  transmute(draw_year = as.character(draw_year),draw_num,jackpot, num_of_wins, 
             jackpot_per_winner = jackpot/ num_of_wins)
 
 
 
-#Filters Winners from 2000 to 2020 and summarizes data
+
+
+#Filters Winners from 2000 to 2020 and summarizes data by calculating the total and average amount of wins
 winner_trend<- nlcb %>%
   filter(draw_year >= 2000) %>%
   group_by(draw_year)%>%
@@ -23,7 +25,7 @@ write.csv(winner_trend,"winner_trend.csv")
 #Plots Winner data to view trend of total wins per year 
 #Inspects the total number of winner
 ggplot(winner_trend, aes(draw_year,yearly_wins))+
-  geom_col(colour = "black", fill = "darkblue")+
+  geom_col(fill = "skyblue")+
   theme_classic()+
   ylab(label = "Yearly Wins")+
   xlab(label = "Draw Year")
