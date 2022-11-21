@@ -9,18 +9,37 @@ nlcb <- read_csv("nlcb_cashpot.csv") %>%
             jackpot_per_winner = jackpot/ num_of_wins)
 
 
-
-
-
 #Filters Winners from 2000 to 2020 and summarizes data by calculating the total and average amount of wins
 winner_trend<- nlcb %>%
   filter(draw_year >= 2000) %>%
   group_by(draw_year)%>%
-  summarize(yearly_wins = sum(num_of_wins), avg_wins = mean(num_of_wins),
+  summarize(yearly_wins = sum(num_of_wins), 
+            avg_wins = mean(num_of_wins),
             median_wins = median(num_of_wins))
 
+winner_test <- nlcb%>%
+  summarize(avg_winners = mean(num_of_wins))%>%
+  pull()
+
 write.csv(winner_trend,"winner_trend.csv")
-  
+
+#Testing of Hypothesis whether or not persons win cashpot 
+
+#Pulls the means of winners
+winner_pop <- winner_test%>%
+  select(avg_wins)%>%
+  pull()
+#Null Hypothesis assumes that no one wins cashpot
+win_hyp <- 0 
+
+sd_wins <- nlcb%>%
+  summarize(sd_wins = sd(num_of_wins))
+#Calculates T Score for winners 
+win_t_score <- (winner_test - win_hyp) / sd_wins
+
+win_p_value <-pnorm(win_t_score,lower.tail = FALSE)
+
+
 
 #Plots Winner data to view trend of total wins per year 
 #Inspects the total number of winner
