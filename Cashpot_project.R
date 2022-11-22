@@ -6,39 +6,44 @@ library(dplyr)
 ## Loads NLCB worksheet and selects the needed columns. The draw_year variable is also converted into a discrete variable. 
 nlcb <- read_csv("nlcb_cashpot.csv") %>%
   transmute(draw_year = as.character(draw_year),draw_num,jackpot, num_of_wins, 
-            jackpot_per_winner = jackpot/ num_of_wins)
-
+            jackpot_per_winner = jackpot/ num_of_wins)%>%
+  filter(draw_year >= 2000)
 
 #Filters Winners from 2000 to 2020 and summarizes data by calculating the total and average amount of wins
 winner_trend<- nlcb %>%
-  filter(draw_year >= 2000) %>%
   group_by(draw_year)%>%
   summarize(yearly_wins = sum(num_of_wins), 
             avg_wins = mean(num_of_wins),
             median_wins = median(num_of_wins))
 
-winner_test <- nlcb%>%
-  summarize(avg_winners = mean(num_of_wins))%>%
-  pull()
-
+#Saves Winner Trend to Excel spreadsheet 
 write.csv(winner_trend,"winner_trend.csv")
 
-#Testing of Hypothesis whether or not persons win cashpot 
+#Tests the data to determine whether or not the data follows a normal distribution
+ggplot(nlcb, aes(num_of_wins))+
+  geom_histogram(binwidth = 1, fill = "lightblue")+
+  xlim(0,10)
 
-#Pulls the means of winners
-winner_pop <- winner_test%>%
-  select(avg_wins)%>%
-  pull()
+#Calculates the point estimate for the number of winners 
+winner_test <- nlcb%>%
+  group_by(draw_year)%>%
+  summarize(avg_winners = mean(num_of_wins))%>%
+  pull(avg_winners)
+
 #Null Hypothesis assumes that no one wins cashpot
-win_hyp <- 0 
+win_hyp <- 0.0 
 
 sd_wins <- nlcb%>%
   summarize(sd_wins = sd(num_of_wins))
+
 #Calculates T Score for winners 
-win_t_score <- (winner_test - win_hyp) / sd_wins
+win_t_score = (winner_test - win_hyp)  / sd_wins%>%
+  rename(t_score = sd_wins)
 
-win_p_value <-pnorm(win_t_score,lower.tail = FALSE)
+win_t_score
 
+win_p_value <- pnorm(win_t_score$t_score,lower.tail = FALSE)
+win_p_value
 
 
 #Plots Winner data to view trend of total wins per year 
@@ -71,15 +76,32 @@ jackpot_sum <- nlcb %>%
   summarize( yearly_avg_jackpot = mean(jackpot),
              yearly_mid_jackpot = median(jackpot)) 
 
+#Saves Jackpot Summary to Excel Spreadsheet 
 write.csv(jackpot_sum,"jacpot_summary.csv")
 
+
+#Calculates the IQR of the Jackpot variable 
+jackpot_iqr <- (quantile(nlcb$jackpot, 0.75)  - quantile(nlcb$jackpot, 0.25))
+
+#Calculates the upper and lower limit for the jackpots
+jackpot_lowerlimit <- (quantile(nlcb$jackpot, 0.25) - 
+                         (1.5 * jackpot_iqr))
+jackpot_upperlimit <- (quantile(nlcb$jackpot, 0.75) + 
+                         (1.5 * jackpot_iqr))
+
+#Highlights the outliers in the Jackpots  data
+jackpot_outlier <- nlcb %>%
+  filter( jackpot > jackpot_upperlimit| jackpot < jackpot_lowerlimit)
+
 #Summarizes Jackpot per Winner
+#Calculates the average amount each winner would receive each year 
 jackpot_per_winner_sum <- nlcb %>%
   filter(draw_year >= 2000)%>%
   filter(num_of_wins >= 1 )%>%
   group_by(draw_year) %>%
   summarize(avg_jackpot_per_winner= mean(jackpot_per_winner))
 
+#Saves Jackpot per Winner to Excel document
 write.csv(jackpot_per_winner_sum,"jackpot_per_winner_summary.csv")
 
 #Boxplot used to quickly test for outliers
@@ -87,18 +109,6 @@ ggplot(jackpot_per_winner_sum, aes(avg_jackpot_per_winner,color= draw_year,y = 1
   geom_boxplot()
   
 
-#Calculates the IQR of the Jackpot variable 
-jackpot_iqr <- (quantile(nlcb$jackpot, 0.75)  - quantile(nlcb$jackpot, 0.25))
-
-#Calculates the upper and lower limit for the jackpots
-jackpot_lowerlimit <- (quantile(nlcb$jackpot, 0.25) - 
-                        (1.5 * jackpot_iqr))
-jackpot_upperlimit <- (quantile(nlcb$jackpot, 0.75) + 
-                       (1.5 * jackpot_iqr))
-
-#Highlights the outliers in the Jackpots  data
-jackpot_outlier <- nlcb %>%
-  filter( jackpot > jackpot_upperlimit| jackpot < jackpot_lowerlimit)
   
 
 #Number of Losses per year. This counts each draw that did not have a winner
@@ -117,6 +127,19 @@ winner_draw_count <- nlcb %>%
   count(draw_year)%>%
   rename(num_of_draw_wins = n)
 
+
+#Calculates the IQR of the Jackpot variable 
+jackpot_iqr <- (quantile(nlcb$jackpot, 0.75)  - quantile(nlcb$jackpot, 0.25))
+
+#Calculates the upper and lower limit for the jackpots
+jackpot_lowerlimit <- (quantile(nlcb$jackpot, 0.25) - 
+                         (1.5 * jackpot_iqr))
+jackpot_upperlimit <- (quantile(nlcb$jackpot, 0.75) + 
+                         (1.5 * jackpot_iqr))
+
+#Highlights the outliers in the Jackpots  data
+jackpot_outlier <- nlcb %>%
+  filter( jackpot > jackpot_upperlimit| jackpot < jackpot_lowerlimit)
 
 #Calculate how much draws happened per year
 yearly_draw_amt <- nlcb %>%
